@@ -132,6 +132,21 @@ static UIView *connectGlyphIn(UIView *holder) {
     UIView *queue = SGRFindByIdentifier(host, @"QueueButtonNowPlaying", &kQueueKey);
     CGFloat queueFrom = moveTo(arrangedAround(queue, host), queue, CGPointMake(CGRectGetMidX(queue.bounds), CGRectGetMidY(queue.bounds)), host, round(width * (rtl ? kLeading : kTrailing)));
 
+    // Spotify's own lyrics sync mode pill ("Word Synced") lands in this row too, on a track it
+    // offers one for, as an arranged view none of the above account for: it stays in the stack's
+    // flow, untransformed, and sits over the connect glyph moved on top of it. Nothing here wants
+    // Spotify's control for it, so anything left in the row that is not one of the three glyphs
+    // goes with the share button and the trimmer.
+    NSMutableSet<UIView *> *known = [NSMutableSet set];
+    UIView *views[] = {share, trimmer, connect, queue};
+    for (size_t i = 0; i < sizeof(views) / sizeof(views[0]); i++) {
+        UIView *arranged = arrangedAround(views[i], host);
+        if (arranged) [known addObject:arranged];
+    }
+    for (UIView *arranged in SGRowIn(host).arrangedSubviews) {
+        if (![known containsObject:arranged]) SGRPlayerVanish(arranged);
+    }
+
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         SGLog(@"redesign player: footer lyrics at %.0f, connect %.0f (%@) to %.0f, queue %.0f to %.0f, share %@", lyrics.center.x,
